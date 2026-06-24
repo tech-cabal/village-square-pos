@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}- POS{% endblock %}
+{% block page_title %}New Order{% endblock %}
+
+{% block content %}
+<div class="pos-container">
+    <!-- Menu Side -->
+    <div class="pos-menu">
+        <div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+            {% for food in foods %}
+            <div class="card food-item-card" data-food-id="{{ food.id }}" data-food-name="{{ food.name }}" data-food-price="{{ food.price }}" onclick="openProteinModal(this.dataset.foodId, this.dataset.foodName, this.dataset.foodPrice)">
+                <div class="food-image-placeholder">
+                    {% if food.image %}
+                        <img src="{{ food.image.url }}" alt="{{ food.name }}">
+                    {% else %}
+                        {{ food.name|make_list|first|upper }}
+                    {% endif %}
+                </div>
+                <div class="food-info">
+                    <span class="food-name">{{ food.name }}</span>
+                    <span class="food-price">₦{{ food.price }}</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.8rem; color: var(--text-light);">
+                    {{ food.quantity }} portions left
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Cart Side -->
+    <div class="pos-cart">
+        <h3 style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Current Order</h3>
+        
+        <div class="cart-items" id="cart-items-container">
+            <!-- Items injected by JS -->
+        </div>
+        <p style="color: var(--text-light); text-align: center; margin-bottom: 24px; margin-top: 16px;" id="empty-cart-msg">Cart is empty</p>
+        
+        <div class="cart-summary">
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span id="cart-subtotal">₦0.00</span>
+            </div>
+            <div class="summary-row summary-total">
+                <span>Total</span>
+                <span id="cart-total">₦0.00</span>
+            </div>
+            <button class="btn btn-primary" style="width: 100%; margin-top: 16px; padding: 16px; font-size: 1.1rem;" onclick="submitOrder()">Confirm Order</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Proteins -->
+<div class="modal-overlay" id="protein-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-food-name" style="font-size: 1.3rem;">Add Extras</h3>
+            <button class="close-btn" onclick="closeProteinModal()">&times;</button>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px; background: #f8f9fa; border-radius: 8px;">
+            <strong style="font-size: 1.1rem; color: var(--text-color);">Food Portions:</strong>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 1.2rem;" onclick="updateFoodQty(-1)">-</button>
+                <span id="modal-food-qty" style="font-weight: 700; font-size: 1.2rem; min-width: 30px; text-align: center;">1</span>
+                <button class="btn btn-secondary" style="padding: 4px 12px; font-size: 1.2rem;" onclick="updateFoodQty(1)">+</button>
+            </div>
+        </div>
+        <h4 style="margin-bottom: 12px; color: var(--text-light); font-size: 0.9rem; text-transform: uppercase;">Extras & Proteins (Per Portion)</h4>
+        <div class="protein-list" id="protein-list-container">
+            <!-- Proteins injected by JS -->
+        </div>
+        <button class="btn btn-primary" style="width: 100%;" onclick="addFoodToCart()">Add to Cart</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script id="proteins-data" type="application/json">
+    {{ proteins_json|safe }}
+</script>
+<form id="csrf-form" style="display:none" data-submit-url="{% url 'pos_submit_order' %}">{% csrf_token %}</form>
+
+<script>
+    const availableProteins = JSON.parse(document.getElementById('proteins-data').textContent);
+    let cart = [];
+    let currentFoodSelection = null;
+    let currentFoodQty = 1;
+    let selectedProteins = {}; // protein_id -> quantity
+
+    function updateFoodQty(delta) {
+        currentFoodQty += delta;
+        if (currentFoodQty < 1) currentFoodQty = 1; // Ensure at least 1 portion
+        document.getElementById('modal-food-qty').innerText = currentFoodQty;
+    }
+
+    function openProteinModal(foodId, foodName, foodPrice) {
+        currentFoodSelection = { id: parseInt(foodId), name: foodName, price: parseFloat(foodPrice) };
+        selectedProteins = {};
+        currentFoodQty = 1;
+        
+        document.getElementById('modal-food-qty').innerText = currentFoodQty;
+        document.getElementById('modal-food-name').innerText = `Customize: ${foodName}`;
+        
+        const container = document.getElementById('protein-list-container');
+        container.innerHTML = '';
+        
+        availableProteins.forEach(protein => {
+            const div = document.createElement('div');
+            div.className = 'protein-item';
+            div.id = `protein-item-${protein.id}`;
+            div.innerHTML = `
+                <div>
+                    <strong>${protein.name}</strong><br>
+                    <span style="color: var(--primary-color);">₦${protein.price}</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="updateProteinQty(${protein.id}, -1)">-</button>
+                    <span id="protein-qty-${protein.id}" style="font-weight: 600; min-width: 20px; text-align: center;">0</span>
+                    <button class="btn btn-secondary" style="padding: 4px 8px;" onclick="updateProteinQty(${protein.id}, 1)">+</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        
+        document.getElementById('protein-modal').classList.add('active');
+    }
+
+    function closeProteinModal() {
+        document.getElementById('protein-modal').classList.remove('active');
+    }
+
+    function updateProteinQty(proteinId, delta) {
+        if (!selectedProteins[proteinId]) selectedProteins[proteinId] = 0;
+        selectedProteins[proteinId] += delta;
+        
+        if (selectedProteins[proteinId] < 0) selectedProteins[proteinId] = 0;
+        
+        document.getElementById(`protein-qty-${proteinId}`).innerText = selectedProteins[proteinId];
+        
+        const el = document.getElementById(`protein-item-${proteinId}`);
+        if (selectedProteins[proteinId] > 0) {
+            el.classList.add('selected');
+        } else {
+            el.classList.remove('selected');
+        }
+    }
+
+    function addFoodToCart() {
+        if (!currentFoodSelection) return;
+        
+        let extras = [];
+        let extrasSubtotal = 0;
+        
+        Object.keys(selectedProteins).forEach(pid => {
+            const qty = selectedProteins[pid];
+            if (qty > 0) {
+                const p = availableProteins.find(x => x.id == pid);
+                extras.push({
+                    protein_id: parseInt(pid),
+                    name: p.name,
+                    quantity: qty,
+                    price: parseFloat(p.price)
+                });
+                extrasSubtotal += qty * parseFloat(p.price);
+            }
+        });
+        
+        const cartItem = {
+            cart_id: Date.now(), // unique id for cart
+            food_id: currentFoodSelection.id,
+            name: currentFoodSelection.name,
+            price: currentFoodSelection.price,
+            quantity: currentFoodQty,
+            extras: extras,
+            subtotal: (currentFoodSelection.price + extrasSubtotal) * currentFoodQty
+        };
+        
+        cart.push(cartItem);
+        updateCartUI();
+        closeProteinModal();
+    }
+
+    function removeCartItem(cartId) {
+        cart = cart.filter(item => item.cart_id !== cartId);
+        updateCartUI();
+    }
+    
+    function changeCartItemQty(cartId, delta) {
+        const item = cart.find(i => i.cart_id === cartId);
+        if (item) {
+            item.quantity += delta;
+            if (item.quantity <= 0) {
+                removeCartItem(cartId);
+                return;
+            }
+            // Recalculate subtotal
+            let extrasSubtotal = item.extras.reduce((sum, extra) => sum + (extra.price * extra.quantity), 0);
+            item.subtotal = (item.price + extrasSubtotal) * item.quantity;
+            updateCartUI();
+        }
+    }
+
+    function updateCartUI() {
+        const container = document.getElementById('cart-items-container');
+        const emptyMsg = document.getElementById('empty-cart-msg');
+        
+        container.innerHTML = '';
+        
+        if (cart.length === 0) {
+            emptyMsg.style.display = 'block';
+            document.getElementById('cart-subtotal').innerText = '₦0.00';
+            document.getElementById('cart-total').innerText = '₦0.00';
+            return;
+        }
+        
+        emptyMsg.style.display = 'none';
+        
+        let total = 0;
+        
+        cart.forEach(item => {
+            total += item.subtotal;
+            
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            
+            let extrasHtml = '';
+            item.extras.forEach(ext => {
+                extrasHtml += `<div>+ ${ext.quantity}x ${ext.name} (@ ₦${ext.price})</div>`;
+            });
+            
+            div.innerHTML = `
+                <div class="cart-item-header">
+                    <span>${item.name}</span>
+                    <span>₦${item.subtotal}</span>
+                </div>
+                <div class="cart-item-extras">
+                    ${extrasHtml}
+                </div>
+                <div class="cart-item-actions">
+                    <button class="btn btn-outline" onclick="changeCartItemQty(${item.cart_id}, -1)">-</button>
+                    <span style="display: flex; align-items: center; min-width: 20px; justify-content: center; font-weight: 600;">${item.quantity}</span>
+                    <button class="btn btn-outline" onclick="changeCartItemQty(${item.cart_id}, 1)">+</button>
+                    <button class="btn btn-secondary" onclick="removeCartItem(${item.cart_id})" style="margin-left: auto;">Del</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        
+        document.getElementById('cart-subtotal').innerText = `₦${total.toFixed(2)}`;
+        document.getElementById('cart-total').innerText = `₦${total.toFixed(2)}`;
+    }
+
+    function submitOrder() {
+        if (cart.length === 0) {
+            alert('Cart is empty!');
+            return;
+        }
+        
+        const total = cart.reduce((sum, item) => sum + item.subtotal, 0);
+        
+        const csrfForm = document.getElementById('csrf-form');
+        const csrfToken = csrfForm.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        const submitUrl = csrfForm.dataset.submitUrl;
+        
+        fetch(submitUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                items: cart,
+                total: total
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.href = `/pos/receipt/${data.order_id}/`;
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while submitting the order.');
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}- Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid" style="margin-bottom: 32px;">
+    <div class="card">
+        <h3 style="color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Today's Sales</h3>
+        <p style="font-size: 2rem; font-weight: 700; color: var(--primary-color);">₦{{ total_sales }}</p>
+    </div>
+    <div class="card">
+        <h3 style="color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Today's Orders</h3>
+        <p style="font-size: 2rem; font-weight: 700; color: var(--primary-color);">{{ order_count }}</p>
+    </div>
+    <div class="card">
+        <h3 style="color: var(--text-light); margin-bottom: 8px; font-weight: 500;">Available Foods</h3>
+        <p style="font-size: 2rem; font-weight: 700; color: var(--primary-color);">{{ available_foods }}</p>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3 style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Low Stock Foods</h3>
+        {% if low_stock_foods %}
+        <ul style="list-style: none;">
+            {% for food in low_stock_foods %}
+            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border-color);">
+                <span>{{ food.name }}</span>
+                <span class="badge badge-danger">{{ food.quantity }} left</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="color: var(--text-light);">Inventory levels are healthy.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3 style="margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">Low Stock Proteins</h3>
+        {% if low_stock_proteins %}
+        <ul style="list-style: none;">
+            {% for protein in low_stock_proteins %}
+            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border-color);">
+                <span>{{ protein.name }}</span>
+                <span class="badge badge-danger">{{ protein.quantity }} left</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="color: var(--text-light);">Inventory levels are healthy.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

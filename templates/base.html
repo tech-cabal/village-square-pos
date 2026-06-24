@@ -1,0 +1,56 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Village Square POS {% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>Village Square</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="{% url 'dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+            <li><a href="{% url 'pos_new_order' %}" class="{% if request.resolver_match.url_name == 'pos_new_order' %}active{% endif %}">New Order (POS)</a></li>
+            <li><a href="{% url 'food_menu' %}" class="{% if request.resolver_match.url_name == 'food_menu' %}active{% endif %}">Food Menu</a></li>
+            {% if request.user.is_superuser %}
+            <li><a href="{% url 'inventory_manage' %}" class="{% if request.resolver_match.url_name == 'inventory_manage' %}active{% endif %}">Inventory</a></li>
+            <li><a href="{% url 'sales_report' %}" class="{% if request.resolver_match.url_name == 'sales_report' %}active{% endif %}">Sales Reports</a></li>
+            {% else %}
+                {% for group in request.user.groups.all %}
+                    {% if group.name == 'Admin' %}
+                    <li><a href="{% url 'inventory_manage' %}" class="{% if request.resolver_match.url_name == 'inventory_manage' %}active{% endif %}">Inventory</a></li>
+                    <li><a href="{% url 'sales_report' %}" class="{% if request.resolver_match.url_name == 'sales_report' %}active{% endif %}">Sales Reports</a></li>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </ul>
+        <div class="sidebar-footer">
+            <a href="#" onclick="document.getElementById('logout-form').submit(); return false;">Logout ({{ user.username }})</a>
+            <form id="logout-form" method="post" action="{% url 'logout' %}" style="display: none;">
+                {% csrf_token %}
+            </form>
+        </div>
+    </nav>
+    <main class="main-content">
+        <div class="topbar">
+            <h1>{% block page_title %}{% endblock %}</h1>
+            <div class="user-info">
+                <div class="user-avatar">{{ user.username|make_list|first|upper }}</div>
+                <span>{{ user.username }}</span>
+            </div>
+        </div>
+        {% block content %}{% endblock %}
+    </main>
+    {% else %}
+        {% block login_content %}{% endblock %}
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

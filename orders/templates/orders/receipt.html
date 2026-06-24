@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}- Receipt #{{ order.order_number }}{% endblock %}
+{% block page_title %}Receipt #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 400px; font-family: monospace;">
+        <div style="text-align: center; border-bottom: 2px dashed var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+            <h2>Village Square</h2>
+            <p>Restaurant POS</p>
+            <p style="margin-top: 8px;">Order #: {{ order.order_number }}</p>
+            <p>Date: {{ order.date|date:"Y-m-d H:i" }}</p>
+            <p>Staff: {{ order.staff.username }}</p>
+        </div>
+        
+        <div style="border-bottom: 2px dashed var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+            <table style="width: 100%;">
+                {% for item in order.items.all %}
+                <tr>
+                    <td colspan="2" style="font-weight: bold; padding-top: 8px;">{{ item.quantity }}x {{ item.food.name }}</td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td style="text-align: right;">₦{{ item.subtotal }}</td>
+                </tr>
+                {% for extra in item.extras.all %}
+                <tr style="font-size: 0.9em; color: #555;">
+                    <td style="padding-left: 16px;">+ {{ extra.quantity }}x {{ extra.protein.name }}</td>
+                    <td style="text-align: right;">(₦{{ extra.price }})</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </table>
+        </div>
+        
+        <div style="text-align: right; font-size: 1.2rem; font-weight: bold; margin-bottom: 24px;">
+            Total: ₦{{ order.total_amount }}
+        </div>
+        
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button class="btn btn-primary" onclick="window.print()">Print Receipt</button>
+            <a href="{% url 'pos_new_order' %}" class="btn btn-secondary">New Order</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
