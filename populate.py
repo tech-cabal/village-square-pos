@@ -6,6 +6,7 @@ django.setup()
 
 from django.contrib.auth.models import User, Group
 from inventory.models import FoodItem, Protein
+from django.core.files import File
 
 def populate():
     # Create Groups
@@ -35,7 +36,14 @@ def populate():
         {"name": "Ofada Rice", "price": 2300, "quantity": 20, "desc": "Local Ofada Rice with sauce"},
     ]
     for f in foods:
-        FoodItem.objects.get_or_create(name=f['name'], defaults={'price': f['price'], 'quantity': f['quantity'], 'description': f['desc']})
+        food, created = FoodItem.objects.get_or_create(name=f['name'], defaults={'price': f['price'], 'quantity': f['quantity'], 'description': f['desc']})
+        
+        # Attach image if exists
+        image_filename = f['name'].lower().replace(' ', '_') + '.png'
+        image_path = os.path.join('seed_images', image_filename)
+        if os.path.exists(image_path) and not food.image:
+            with open(image_path, 'rb') as img_file:
+                food.image.save(image_filename, File(img_file), save=True)
 
     # Create Proteins
     proteins = [
